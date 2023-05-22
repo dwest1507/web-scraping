@@ -1,0 +1,110 @@
+---
+title: "Web Scraping with RSelenium"
+author: "David West"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Set up RSelenium
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(RSelenium)
+library(wdman)
+library(netstat)
+```
+
+```{r}
+selenium()
+```
+
+```{r}
+selenium_object <- selenium(retcommand = T, check = F)
+selenium_object
+```
+Open Google Chrome
+```{r}
+chrome_versions <- binman::list_versions('chromedriver')$win32
+
+rd <- rsDriver(
+  browser = "chrome",
+  chromever = chrome_versions[length(chrome_versions)-1],
+  verbose = F,
+  # port = free_port()
+  port = 3455L
+)
+```
+
+Create client driver
+```{r}
+rd_client <- rd$client
+```
+
+Navigate to MatWeb
+```{r}
+rd_client$navigate("https://www.matweb.com/search/CompositionSearch.aspx")
+```
+
+Search for magnesium containing alloys
+```{r}
+?remoteDriver()
+mat_cat1 <- rd_client$findElement(
+  using = 'id', 
+  'ctl00_ContentMain_ucPropertyDropdown1_drpPropertyList'
+)
+mat_cat1$clickElement()
+mat_cat1$sendKeysToElement(list('Magnesium', key='enter'))
+```
+
+Alloys must contain at least one percent magnesium
+```{r}
+mat_cat1_min <- rd_client$findElement(
+  using = 'id', 
+  'ctl00_ContentMain_ucPropertyEdit1_txtpMin'
+)
+mat_cat1_min$clickElement()
+mat_cat1_min$sendKeysToElement(list('1.0'))
+```
+
+Search results
+```{r}
+find_button <- rd_client$findElement(
+  using = 'id', 
+  'ctl00_ContentMain_btnSubmit'
+)
+find_button$clickElement()
+```
+
+Change results output to show 200 at a time
+```{r}
+view_per_page <- rd_client$findElement(
+  using = 'id', 
+  'ctl00_ContentMain_UcSearchResults1_drpPageSize1'
+)
+view_per_page$clickElement()
+view_per_page$sendKeysToElement(list('200', key='enter'))
+```
+
+Number of search results
+```{r}
+search_count <- rd_client$findElement(
+  using = 'id', 
+  'ctl00_ContentMain_UcSearchResults1_lblResultCount'
+)
+search_count$getElementText()
+```
+
+Pull Table information
+```{r}
+table <- rd_client$findElement(
+  using = 'id', 
+  'tblResults'
+)
+```
+
+
+
+Close server
+```{r}
+rd$server$stop()
+```
